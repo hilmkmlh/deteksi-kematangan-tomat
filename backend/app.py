@@ -46,12 +46,23 @@ app = Flask(__name__)
 CORS(app)
 
 def _load_model():
+    # 1. Pakai file lokal kalau ada
     if os.path.exists(MODEL_PATH):
         m = YOLO(MODEL_PATH)
-        print(f"[INFO] Model dimuat. Kelas: {m.names}")
+        print(f"[INFO] Model dimuat dari lokal. Kelas: {m.names}")
         return m
 
-    # Fallback: download dari URL jika env MODEL_URL diset
+    # 2. Download dari HF Hub (set env HF_MODEL_REPO = "username/repo-name")
+    hf_repo = os.environ.get("HF_MODEL_REPO")
+    if hf_repo:
+        from huggingface_hub import hf_hub_download
+        print(f"[INFO] Mendownload model dari HF Hub: {hf_repo} ...")
+        path = hf_hub_download(repo_id=hf_repo, filename="best.pt", local_dir=BASE_DIR)
+        m = YOLO(path)
+        print(f"[INFO] Model berhasil didownload. Kelas: {m.names}")
+        return m
+
+    # 3. Download dari URL biasa (set env MODEL_URL)
     url = os.environ.get("MODEL_URL")
     if url:
         import urllib.request
@@ -59,7 +70,7 @@ def _load_model():
         urllib.request.urlretrieve(url, MODEL_PATH)
         return YOLO(MODEL_PATH)
 
-    print(f"[WARNING] File model tidak ditemukan: {MODEL_PATH}")
+    print(f"[WARNING] Model tidak ditemukan. Set env HF_MODEL_REPO atau MODEL_URL.")
     return None
 
 model = _load_model()
