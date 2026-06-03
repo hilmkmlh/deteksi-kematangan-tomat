@@ -1,3 +1,12 @@
+---
+title: Deteksi Kematangan Tomat
+emoji: 🍅
+colorFrom: red
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # 🍅 Tomatech — Deteksi Kematangan Tomat dengan YOLOv8
 
 Website untuk mendeteksi dan menghitung tingkat kematangan buah tomat menggunakan YOLOv8.
