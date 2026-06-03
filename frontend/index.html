@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Deteksi Kematangan Buah Tomat</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     KONFIGURASI DESAIN
+     Palet: hijau zaitun + krem hangat + merah tomat sebagai aksen
+     ============================================================ */
+  :root {
+    --bg-cream: #f4ede0;
+    --bg-cream-deep: #ebe1cf;
+    --ink: #1f2419;
+    --ink-soft: #4a4f3f;
+    --leaf: #2d4a2b;
+    --leaf-bright: #4f7c3e;
+    --tomato: #c8412c;
+    --tomato-deep: #9c2e1e;
+    --tomato-soft: #e8825e;
+    --amber: #d99a3f;
+    --paper: #faf6ed;
+    --line: rgba(31, 36, 25, 0.12);
+
+    --font-display: "Helvetica", "Times New Roman", serif;
+    --font-body: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+
+    --api-url: "http://localhost:5000";
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-cream);
+    color: var(--ink);
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(200, 65, 44, 0.06) 0%, transparent 40%),
+      radial-gradient(circle at 85% 70%, rgba(45, 74, 43, 0.07) 0%, transparent 45%);
+  }
+
+
+  /* ============================================================
+     HERO SECTION (hidden)
+     ============================================================ */
+
+  /* ============================================================
+     MAIN APP SECTION
+     ============================================================ */
+  .app-section {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0.5rem 2rem 4rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .app-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  @media (max-width: 900px) {
+    .app-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .panel-num {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.1em;
+  }
+
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* ============================================================
+     UPLOAD / CAPTURE PANEL
+     ============================================================ */
+  .input-mode-toggle {
+    display: flex;
+    gap: 0.4rem;
+    background: var(--bg-cream-deep);
+    padding: 0.3rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 0.7rem;
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .mode-btn.active {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .mode-btn svg { width: 18px; height: 18px; }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed var(--leaf-bright);
+    border-radius: 18px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: rgba(79, 124, 62, 0.04);
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    background: rgba(79, 124, 62, 0.1);
+    border-color: var(--leaf);
+    transform: scale(1.005);
+  }
+
+  .drop-icon {
+    width: 64px; height: 64px;
+    margin: 0 auto 1rem;
+    background: var(--leaf);
+    color: var(--paper);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(-5deg);
+    transition: transform 0.3s;
+  }
+
+  .drop-zone:hover .drop-icon {
+    transform: rotate(5deg) scale(1.05);
+  }
+
+  .drop-icon svg { width: 32px; height: 32px; }
+
+  .drop-zone h3 {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  .drop-zone p {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+
+  .drop-zone .browse {
+    color: var(--tomato);
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  /* Camera */
+  .camera-container {
+    border-radius: 18px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 4/3;
+    position: relative;
+    display: none;
+  }
+
+  .camera-container.active { display: block; }
+
+  #video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  .camera-controls {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.8rem;
+  }
+
+  .cam-btn {
+    background: var(--paper);
+    border: none;
+    border-radius: 100px;
+    padding: 0.7rem 1.4rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+  }
+  .cam-btn:hover { transform: scale(1.05); }
+  .cam-btn.primary {
+    background: var(--tomato);
+    color: var(--paper);
+  }
+
+  /* Preview & action */
+  .preview-container {
+    margin-top: 1.5rem;
+    display: none;
+  }
+  .preview-container.show { display: block; }
+
+  #previewImg {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    max-height: 360px;
+    object-fit: contain;
+    background: var(--bg-cream-deep);
+  }
+
+  .action-row {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1rem;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary {
+    background: var(--tomato);
+    color: var(--paper);
+    box-shadow: 0 4px 0 var(--tomato-deep);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--tomato-deep);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--tomato-deep);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: 0 4px 0 var(--tomato-deep);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-cream-deep);
+  }
+
+  /* ============================================================
+     RESULTS PANEL
+     ============================================================ */
+  .results-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--ink-soft);
+  }
+
+  .results-empty .empty-icon {
+    width: 80px; height: 80px;
+    margin: 0 auto 1.2rem;
+    border-radius: 50%;
+    background: var(--bg-cream-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-soft);
+  }
+
+  .results-empty h4 {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.4rem;
+  }
+
+  .results-content { display: none; }
+  .results-content.show { display: block; animation: fadeUp 0.4s ease-out; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .total-display {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    background: linear-gradient(135deg, var(--leaf) 0%, var(--leaf-bright) 100%);
+    color: var(--paper);
+    border-radius: 18px;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .total-display::before {
+    content: "";
+    position: absolute;
+    top: -50%; right: -20%;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, var(--tomato) 0%, transparent 70%);
+    opacity: 0.3;
+  }
+
+  .total-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0.8;
+    margin-bottom: 0.2rem;
+  }
+
+  .total-num {
+    font-family: var(--font-display);
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .total-suffix {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.3rem;
+  }
+
+  /* Breakdown cards */
+  .breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .break-card {
+    padding: 1.2rem 0.8rem;
+    border-radius: 14px;
+    text-align: center;
+    border: 1px solid var(--line);
+    background: var(--bg-cream);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .break-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
+
+  .break-card.matang::before { background: var(--tomato); }
+  .break-card.setengah::before { background: var(--amber); }
+  .break-card.tidak::before { background: var(--leaf-bright); }
+
+  .break-icon {
+    font-size: 1.6rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .break-num {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+  .break-card.matang .break-num { color: var(--tomato-deep); }
+  .break-card.setengah .break-num { color: var(--amber); }
+  .break-card.tidak .break-num { color: var(--leaf); }
+
+  .break-label {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Annotated image */
+  .annotated-wrapper {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--bg-cream-deep);
+  }
+
+  #annotatedImg {
+    width: 100%;
+    display: block;
+  }
+
+  .annotated-caption {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.6rem;
+    text-align: center;
+  }
+
+  /* Detail list */
+  .details-toggle {
+    margin-top: 1.2rem;
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--line);
+    padding: 0.8rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+  }
+  .details-toggle:hover { background: var(--bg-cream-deep); }
+
+  .details-list {
+    display: none;
+    margin-top: 1rem;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .details-list.show { display: block; }
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    background: var(--bg-cream);
+    border-bottom: 1px solid var(--line);
+    font-size: 0.88rem;
+  }
+  .detail-row:last-child { border-bottom: none; }
+
+  .detail-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .detail-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .detail-dot.matang { background: var(--tomato); }
+  .detail-dot.setengah_matang { background: var(--amber); }
+  .detail-dot.tidak_matang { background: var(--leaf-bright); }
+
+  .detail-conf {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
+  /* ============================================================
+     LOADING
+     ============================================================ */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+  .loading.show { display: block; }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 50px; height: 50px;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  .loading-spinner::before, .loading-spinner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--tomato);
+    animation: spin 0.9s linear infinite;
+  }
+  .loading-spinner::after {
+    border-top-color: var(--leaf);
+    animation-duration: 1.4s;
+    animation-direction: reverse;
+    inset: 6px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-family: var(--font-display);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+
+  /* ============================================================
+     ERROR
+     ============================================================ */
+  .error-msg {
+    display: none;
+    background: rgba(200, 65, 44, 0.1);
+    border: 1px solid var(--tomato);
+    border-radius: 12px;
+    padding: 1rem;
+    color: var(--tomato-deep);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+  .error-msg.show { display: block; }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 2rem;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.05em;
+    position: relative;
+    z-index: 2;
+  }
+
+  footer .heart { color: var(--tomato); }
+
+  /* Hidden file input */
+  #fileInput { display: none; }
+  #cameraInput { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     APPLICATION
+     ============================================================ -->
+<section class="app-section">
+  <div class="app-grid">
+
+    <!-- LEFT: Input panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-num">01 / Input</div>
+          <div class="panel-title">Unggah atau Foto</div>
+        </div>
+      </div>
+
+      <div class="input-mode-toggle">
+        <button class="mode-btn active" data-mode="upload">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Upload
+        </button>
+        <button class="mode-btn" data-mode="camera">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3" stroke-linecap="round"/></svg>
+          Kamera
+        </button>
+      </div>
+
+      <!-- Upload Mode -->
+      <div id="uploadMode">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          </div>
+          <h3>Letakkan foto di sini</h3>
+          <p>atau <span class="browse">pilih file</span> (JPG, PNG, WEBP)</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" />
+      </div>
+
+      <!-- Camera Mode -->
+      <div id="cameraMode" style="display:none;">
+        <div class="camera-container" id="cameraContainer">
+          <video id="video" autoplay playsinline></video>
+          <div class="camera-controls">
+            <button class="cam-btn primary" id="snapBtn">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M3 7h3l2-3h8l2 3h3v13H3z"/></svg>
+              Ambil Foto
+            </button>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="startCamBtn" style="width:100%; margin-top:0.5rem;">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Aktifkan Kamera
+        </button>
+        <canvas id="canvas" style="display:none;"></canvas>
+      </div>
+
+      <!-- Preview -->
+      <div class="preview-container" id="previewContainer">
+        <img id="previewImg" alt="Preview" />
+        <div class="action-row">
+          <button class="btn btn-ghost" id="resetBtn">Reset</button>
+          <button class="btn btn-primary" id="detectBtn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+            Deteksi Sekarang
+          </button>
+        </div>
+      </div>
+
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <!-- RIGHT: Results panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-num">02 / Output</div>
+          <div class="panel-title">Hasil Deteksi</div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="results-empty" id="resultsEmpty">
+        <div class="empty-icon">
+          <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64"/></svg>
+        </div>
+        <h4>Menunggu input</h4>
+        <p>Hasil analisis akan muncul di sini</p>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Menganalisis gambar…</div>
+      </div>
+
+      <!-- Results -->
+      <div class="results-content" id="resultsContent">
+        <div class="total-display">
+          <div class="total-label">Total Tomat Terdeteksi</div>
+          <span class="total-num" id="totalNum">0</span>
+          <span class="total-suffix">buah</span>
+        </div>
+
+        <div class="breakdown">
+          <div class="break-card matang">
+            <div class="break-icon">🍅</div>
+            <div class="break-num" id="countMatang">0</div>
+            <div class="break-label">Matang</div>
+          </div>
+          <div class="break-card setengah">
+            <div class="break-icon">🍊</div>
+            <div class="break-num" id="countSetengah">0</div>
+            <div class="break-label">Setengah</div>
+          </div>
+          <div class="break-card tidak">
+            <div class="break-icon">🥬</div>
+            <div class="break-num" id="countTidak">0</div>
+            <div class="break-label">Tidak Matang</div>
+          </div>
+        </div>
+
+        <div class="annotated-wrapper">
+          <img id="annotatedImg" alt="Annotated result" />
+        </div>
+        <div class="annotated-caption">— Hasil anotasi bounding box —</div>
+
+        <button class="details-toggle" id="detailsToggle">
+          ▾ Lihat detail per deteksi
+        </button>
+        <div class="details-list" id="detailsList"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+
+<script>
+  // ============================================================
+  // KONFIGURASI
+  // ============================================================
+  const API_URL = "";
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  let currentFile = null;
+  let stream = null;
+
+  // ============================================================
+  // ELEMENTS
+  // ============================================================
+  const $ = (id) => document.getElementById(id);
+  const fileInput = $("fileInput");
+  const dropZone = $("dropZone");
+  const previewContainer = $("previewContainer");
+  const previewImg = $("previewImg");
+  const detectBtn = $("detectBtn");
+  const resetBtn = $("resetBtn");
+  const errorMsg = $("errorMsg");
+  const loading = $("loading");
+  const resultsEmpty = $("resultsEmpty");
+  const resultsContent = $("resultsContent");
+
+  // ============================================================
+  // HEALTH CHECK
+  // ============================================================
+  async function checkHealth() {
+    try {
+      await fetch(`${API_URL}/api/health`);
+    } catch (e) {}
+  }
+  checkHealth();
+
+  // ============================================================
+  // MODE TOGGLE
+  // ============================================================
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const mode = btn.dataset.mode;
+      $("uploadMode").style.display = mode === "upload" ? "block" : "none";
+      $("cameraMode").style.display = mode === "camera" ? "block" : "none";
+      if (mode !== "camera") stopCamera();
+    });
+  });
+
+  // ============================================================
+  // FILE UPLOAD
+  // ============================================================
+  dropZone.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  function handleFile(file) {
+    if (!file.type.startsWith("image/")) {
+      showError("File harus berupa gambar (JPG, PNG, WEBP).");
+      return;
+    }
+    currentFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewImg.src = e.target.result;
+      previewContainer.classList.add("show");
+      hideError();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ============================================================
+  // CAMERA
+  // ============================================================
+  $("startCamBtn").addEventListener("click", async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: 1280, height: 960 }
+      });
+      $("video").srcObject = stream;
+      $("cameraContainer").classList.add("active");
+      $("startCamBtn").style.display = "none";
+    } catch (e) {
+      showError("Gagal mengakses kamera. Pastikan izin kamera diberikan.");
+    }
+  });
+
+  $("snapBtn").addEventListener("click", () => {
+    const video = $("video");
+    const canvas = $("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      currentFile = new File([blob], "snapshot.jpg", { type: "image/jpeg" });
+      previewImg.src = URL.createObjectURL(blob);
+      previewContainer.classList.add("show");
+      stopCamera();
+    }, "image/jpeg", 0.92);
+  });
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    $("cameraContainer").classList.remove("active");
+    $("startCamBtn").style.display = "flex";
+  }
+
+  // ============================================================
+  // RESET
+  // ============================================================
+  resetBtn.addEventListener("click", reset);
+
+  function reset() {
+    currentFile = null;
+    fileInput.value = "";
+    previewContainer.classList.remove("show");
+    resultsContent.classList.remove("show");
+    resultsEmpty.style.display = "block";
+    hideError();
+  }
+
+  // ============================================================
+  // DETECT
+  // ============================================================
+  detectBtn.addEventListener("click", async () => {
+    if (!currentFile) return;
+
+    hideError();
+    resultsEmpty.style.display = "none";
+    resultsContent.classList.remove("show");
+    loading.classList.add("show");
+    detectBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append("image", currentFile);
+
+    try {
+      const res = await fetch(`${API_URL}/api/detect`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal melakukan deteksi.");
+      }
+
+      renderResults(data);
+    } catch (e) {
+      showError(e.message + " — Pastikan backend berjalan di " + API_URL);
+      resultsEmpty.style.display = "block";
+    } finally {
+      loading.classList.remove("show");
+      detectBtn.disabled = false;
+    }
+  });
+
+  // ============================================================
+  // RENDER RESULTS
+  // ============================================================
+  function renderResults(data) {
+    // Total dengan animasi count-up
+    animateNumber($("totalNum"), 0, data.total, 600);
+    animateNumber($("countMatang"), 0, data.counts.matang, 600);
+    animateNumber($("countSetengah"), 0, data.counts.setengah_matang, 600);
+    animateNumber($("countTidak"), 0, data.counts.tidak_matang, 600);
+
+    // Annotated image
+    $("annotatedImg").src = data.annotated_image;
+
+    // Detail list
+    const list = $("detailsList");
+    list.innerHTML = "";
+    data.detections.forEach((d, i) => {
+      const row = document.createElement("div");
+      row.className = "detail-row";
+      row.innerHTML = `
+        <div class="detail-label">
+          <span class="detail-dot ${d.label}"></span>
+          <span>#${i + 1} · ${d.label_display}</span>
+        </div>
+        <span class="detail-conf">${(d.confidence * 100).toFixed(1)}%</span>
+      `;
+      list.appendChild(row);
+    });
+
+    resultsContent.classList.add("show");
+  }
+
+  function animateNumber(el, from, to, duration) {
+    const start = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ============================================================
+  // DETAILS TOGGLE
+  // ============================================================
+  $("detailsToggle").addEventListener("click", () => {
+    const list = $("detailsList");
+    list.classList.toggle("show");
+    $("detailsToggle").textContent = list.classList.contains("show")
+      ? "▴ Sembunyikan detail"
+      : "▾ Lihat detail per deteksi";
+  });
+
+  // ============================================================
+  // ERROR HELPERS
+  // ============================================================
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.add("show");
+  }
+  function hideError() {
+    errorMsg.classList.remove("show");
+  }
+</script>
+
+</body>
+</html>
